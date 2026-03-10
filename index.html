@@ -3,226 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Camera Ticker</title>
-
+    <title>Back Camera News Ticker</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#ff0000">
-
-    
     <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #000;
-            font-family: 'Segoe UI', sans-serif;
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: sans-serif; }
+        
+        /* Camera Container */
+        #camera-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; }
+        
+        video { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            /* MIRROR REMOVED so back camera looks natural */
+            transform: none; 
+        }
+        
+        /* Install Button */
+        #install-btn {
+            position: absolute; top: 15px; left: 15px; z-index: 200;
+            background: #28a745; color: white; border: none; padding: 10px 15px;
+            border-radius: 5px; cursor: pointer; display: none; font-weight: bold;
         }
 
-        /* 1. Camera View */
-        #camera-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 1;
+        /* Toggle Settings Button */
+        #toggle-edit { 
+            position: absolute; top: 15px; right: 15px; z-index: 200; 
+            background: rgba(0,0,0,0.5); color: white; border: 1px solid white; 
+            width: 45px; height: 45px; border-radius: 50%; 
+            display: flex; justify-content: center; align-items: center; 
+            cursor: pointer; font-size: 20px; 
         }
 
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* Mirror effect */
+        /* Hidden Edit Bar */
+        #controls { 
+            position: absolute; top: -100px; left: 50%; transform: translateX(-50%); 
+            z-index: 150; background: rgba(0,0,0,0.8); padding: 15px; 
+            border-radius: 0 0 15px 15px; display: flex; gap: 10px; 
+            width: 90%; max-width: 600px; transition: 0.4s; 
         }
+        #controls.visible { top: 0; }
+        input { flex-grow: 1; padding: 12px; border-radius: 5px; border: none; font-size: 16px; }
 
-        /* 2. Toggle Button (Settings Icon) */
-        #toggle-edit {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            z-index: 200;
-            background: rgba(0, 0, 0, 0.5);
-            color: white;
-            border: 1px solid white;
-            padding: 10px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 20px;
-            width: 45px;
-            height: 45px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            transition: 0.3s;
-        }
-
-        #toggle-edit:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        /* 3. Control Panel (Hidden by default) */
-        #controls {
-            position: absolute;
-            top: -100px; /* Hidden above screen */
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 150;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px;
-            border-radius: 0 0 15px 15px;
-            display: flex;
-            gap: 10px;
-            width: 90%;
-            max-width: 600px;
-            transition: top 0.4s ease-in-out;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-
-        #controls.visible {
-            top: 0; /* Slides down into view */
-        }
-
-        input[type="text"] {
-            flex-grow: 1;
-            padding: 12px;
-            border-radius: 5px;
-            border: none;
-            font-size: 16px;
-            background: #fff;
-        }
-
-        /* 4. The Scrolling Ticker (Bottom) */
-        .ticker-wrap {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            height: 65px;
+        /* Ticker Styling */
+        .ticker-wrap { 
+            position: fixed; bottom: 0; width: 100%; height: 60px; 
             background: linear-gradient(to right, #b00000, #ff0000); 
-            border-top: 3px solid #ffffff;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            overflow: hidden;
+            border-top: 3px solid #fff; z-index: 10; 
+            display: flex; align-items: center; overflow: hidden; 
         }
-
-        /* Static "LIVE" Badge */
-        .live-badge {
-            background: #ffcc00;
-            color: black;
-            font-weight: 900;
-            padding: 0 15px;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            z-index: 20;
-            box-shadow: 5px 0 10px rgba(0,0,0,0.3);
-            font-size: 18px;
+        .live-badge { 
+            background: #ffcc00; color: #000; font-weight: bold; 
+            padding: 0 15px; height: 100%; display: flex; 
+            align-items: center; z-index: 20; font-size: 18px;
         }
-
-        #scrolling-text {
-            display: inline-block;
-            white-space: nowrap;
-            color: white;
-            font-size: 28px;
-            font-weight: bold;
-            animation: marquee 15s linear infinite;
-            padding-left: 100%;
+        #scrolling-text { 
+            display: inline-block; white-space: nowrap; color: white; 
+            font-size: 24px; font-weight: bold; animation: marquee 15s linear infinite; 
+            padding-left: 100%; 
         }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
-        @keyframes marquee {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-100%); }
+        /* Start Screen Overlay */
+        #start-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); z-index: 1000; 
+            display: flex; justify-content: center; align-items: center; 
         }
-
-        /* Start Overlay */
-        #start-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 1000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        button#start-btn {
-            padding: 20px 50px;
-            font-size: 22px;
-            background: #ffcc00;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 0 20px rgba(255, 204, 0, 0.4);
+        button#start-btn { 
+            padding: 20px 50px; font-size: 20px; background: #ffcc00; 
+            border: none; border-radius: 50px; font-weight: bold; cursor: pointer; 
         }
     </style>
 </head>
 <body>
 
-    <!-- Start Overlay -->
+    <!-- Install Button for PWA -->
+    <button id="install-btn">📥 INSTALL APP</button>
+
+    <!-- Initial Start Screen -->
     <div id="start-overlay">
-        <button id="start-btn">🎥 START LIVE CAMERA</button>
+        <button id="start-btn">🎥 START BACK CAMERA</button>
     </div>
 
-    <!-- Toggle Gear Icon -->
-    <div id="toggle-edit" title="Click to edit text">⚙️</div>
+    <!-- Toggle Edit Bar Icon -->
+    <div id="toggle-edit">⚙️</div>
 
-    <!-- Edit Box (Slides down) -->
+    <!-- Hidden Edit Bar -->
     <div id="controls">
-        <input type="text" id="user-input" placeholder="Update News/Scores..." value="LIVE CRICKET: IND 280/4 (42.1) • VIRAT KOHLI 82* • BREAKING NEWS: NEW EPISODE TONIGHT AT 9 PM!">
+        <input type="text" id="user-input" value="LIVE CRICKET: TEAM A 150/2 (20.0) • NEXT EPISODE AT 8:00 PM • STAY TUNED!">
     </div>
-
-    <!-- Camera -->
+    
+    <!-- Camera View -->
     <div id="camera-container">
         <video id="video" autoplay playsinline></video>
     </div>
-
-    <!-- Bottom Ticker -->
+    
+    <!-- News Ticker -->
     <div class="ticker-wrap">
         <div class="live-badge">LIVE</div>
-        <div id="scrolling-text">
-            LIVE CRICKET: IND 280/4 (42.1) • VIRAT KOHLI 82* • BREAKING NEWS: NEW EPISODE TONIGHT AT 9 PM!
-        </div>
+        <div id="scrolling-text">LIVE CRICKET: TEAM A 150/2 (20.0) • NEXT EPISODE AT 8:00 PM • STAY TUNED!</div>
     </div>
 
     <script>
-        const video = document.getElementById('video');
-        const startBtn = document.getElementById('start-btn');
-        const startOverlay = document.getElementById('start-overlay');
-        const userInput = document.getElementById('user-input');
-        const scrollingText = document.getElementById('scrolling-text');
-        const controls = document.getElementById('controls');
-        const toggleEdit = document.getElementById('toggle-edit');
+        // Service Worker for Offline/Installation
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
 
-        // 1. Start Camera
-        startBtn.addEventListener('click', async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { width: 1920, height: 1080 }, 
-                    audio: false 
+        // Install App Logic
+        let deferredPrompt;
+        const installBtn = document.getElementById('install-btn');
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+        });
+
+        installBtn.addEventListener('click', () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choice) => {
+                    if (choice.outcome === 'accepted') installBtn.style.display = 'none';
                 });
-                video.srcObject = stream;
-                startOverlay.style.display = 'none';
-            } catch (err) {
-                alert("Please enable camera access.");
             }
         });
 
-        // 2. Toggle Edit Bar
-        toggleEdit.addEventListener('click', () => {
-            controls.classList.toggle('visible');
+        // CAMERA LOGIC - SET TO BACK CAMERA (ENVIRONMENT)
+        const video = document.getElementById('video');
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: { ideal: "environment" } // THIS FORCES BACK CAMERA
+                    }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+                document.getElementById('start-overlay').style.display = 'none';
+            } catch (err) {
+                console.error(err);
+                alert("Could not access back camera. Error: " + err.name);
+            }
         });
 
-        // 3. Update Ticker Text
+        // Toggle Edit Bar
+        document.getElementById('toggle-edit').addEventListener('click', () => {
+            document.getElementById('controls').classList.toggle('visible');
+        });
+
+        // Real-time Text Update
+        const userInput = document.getElementById('user-input');
+        const scrollingText = document.getElementById('scrolling-text');
         userInput.addEventListener('input', () => {
             scrollingText.innerText = userInput.value;
             
-            // Restart animation to recalculate text width
+            // Refresh animation for new text length
             scrollingText.style.animation = 'none';
             scrollingText.offsetHeight; 
-            scrollingText.style.animation = null; 
+            scrollingText.style.animation = null;
         });
     </script>
 </body>
